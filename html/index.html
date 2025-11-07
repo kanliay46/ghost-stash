@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+	<meta charset="UTF-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Ghost Stash</title>
+	<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+	<div id="container" class="hidden">
+		<div class="topbar">
+			<div class="title">Ghost Stash</div>
+			<button id="btn-close" class="icon-btn" aria-label="Close">✕</button>
+		</div>
+
+		<div class="tabs">
+			<button class="tab active" data-tab="all">Tümü</button>
+			<button class="tab" data-tab="jobs">Meslek</button>
+			<button class="tab" data-tab="gangs">Çete</button>
+			<button class="tab" data-tab="everyone">Herkes</button>
+			<div class="spacer"></div>
+			<div id="count" class="count"></div>
+			<button id="btn-add" class="primary">Depo Ekle</button>
+		</div>
+
+		<div class="search-bar">
+			<input id="search-input" type="text" placeholder="Depo ara..." />
+		</div>
+
+		<div id="list" class="list"></div>
+	</div>
+
+	<!-- Minimal TextUI -->
+	<div id="textui" class="textui hidden">
+		<span id="textui-text">[E] Depoyu Aç</span>
+	</div>
+
+	<!-- Modal: Add Stash -->
+	<div id="modal" class="modal hidden">
+		<div class="modal-card">
+			<div class="modal-header">
+				<h3 id="modal-title">Depo Ekle</h3>
+				<button id="modal-close" class="icon-btn">✕</button>
+			</div>
+			<div class="modal-body">
+				<label>
+					<span id="lbl-label">Başlık</span>
+					<input id="inp-label" type="text" />
+				</label>
+
+				<div class="row">
+					<label class="w-50">
+						<span id="lbl-type">Tip</span>
+						<select id="sel-type">
+							<option value="everyone">Everyone</option>
+							<option value="job">Job</option>
+							<option value="gang">Gang</option>
+						</select>
+					</label>
+					<label class="w-50" id="wrap-job" style="display:none">
+						<span id="lbl-job">Meslek</span>
+						<input id="inp-job" type="text" placeholder="Örn: police" />
+					</label>
+					<label class="w-50" id="wrap-gang" style="display:none">
+						<span id="lbl-gang">Çete</span>
+						<input id="inp-gang" type="text" placeholder="Örn: ballas" />
+					</label>
+				</div>
+
+				<div class="row">
+					<label class="w-50">
+						<span id="lbl-coords">Koordinat</span>
+						<input id="inp-coords" type="text" />
+					</label>
+					<button id="btn-getcoords" class="secondary">Konumumu Kullan</button>
+				</div>
+
+				<div class="row">
+					<label class="w-50">
+						<span id="lbl-radius">Bölge Yarıçapı (m)</span>
+						<input id="inp-radius" type="number" step="0.1" min="0.5" />
+					</label>
+				</div>
+			</div>
+			<div class="modal-footer">
+				<button id="btn-cancel" class="secondary">İptal</button>
+				<button id="btn-save" class="primary">Kaydet</button>
+			</div>
+		</div>
+	</div>
+
+	<script src="app.js"></script>
+</body>
+</html>
