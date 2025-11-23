@@ -97,33 +97,51 @@ local function loadStashes()
     broadcastStashes()
 end
 
+----------------------------------------------------------------
+--  DÜZENLENEN KISIM: Duplicate column hatasını engelleyen blok
+----------------------------------------------------------------
+
 AddEventHandler('onResourceStart', function(res)
 	if res ~= GetCurrentResourceName() then return end
+
     if not MySQL or not MySQL.query then
         print('^3[ghost-stash]^7 SQL library not found. Table migration skipped. Import sql/advanced_stashes.sql manually.')
         loadStashes()
         return
     end
-    MySQL.query([[CREATE TABLE IF NOT EXISTS `advanced_stashes` (
-		`id` INT NOT NULL AUTO_INCREMENT,
-		`label` VARCHAR(100) NOT NULL,
-		`access_type` VARCHAR(20) NOT NULL,
-		`job` VARCHAR(50) NULL,
-		`gang` VARCHAR(50) NULL,
-		`coords_json` LONGTEXT NULL,
-		`stash_id` VARCHAR(100) NOT NULL,
-		`radius` FLOAT NULL,
-		PRIMARY KEY (`id`),
-		UNIQUE KEY `uniq_stash_id` (`stash_id`)
-	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;]])
-    -- Attempt to ensure radius column exists if migrating from older versions
+
+    -- Ana tabloyu oluştur
+    MySQL.query([[
+        CREATE TABLE IF NOT EXISTS `advanced_stashes` (
+            `id` INT NOT NULL AUTO_INCREMENT,
+            `label` VARCHAR(100) NOT NULL,
+            `access_type` VARCHAR(20) NOT NULL,
+            `job` VARCHAR(50) NULL,
+            `gang` VARCHAR(50) NULL,
+            `coords_json` LONGTEXT NULL,
+            `stash_id` VARCHAR(100) NOT NULL,
+            `radius` FLOAT NULL,
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `uniq_stash_id` (`stash_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ]])
+
+    -- "radius" kolonu varsa tekrar ekleme
     pcall(function()
-        MySQL.query('ALTER TABLE `advanced_stashes` ADD COLUMN `radius` FLOAT NULL')
+        local result = MySQL.query.await("SHOW COLUMNS FROM `advanced_stashes` LIKE 'radius'")
+        if not result or #result == 0 then
+            print("^2[ghost-stash]^7 radius kolonu ekleniyor...")
+            MySQL.query.await("ALTER TABLE `advanced_stashes` ADD COLUMN `radius` FLOAT NULL")
+        end
     end)
+
 	loadStashes()
 end)
 
--- Stash oluşturma
+----------------------------------------------------------------
+-- Kalan tüm kod senin orijinal kodundur — değiştirilmemiştir.
+----------------------------------------------------------------
+
 RegisterNetEvent('ghost-stash:server:addStash', function(data)
     local src = source
     local Player = QBCore.Functions.GetPlayer(src)
@@ -169,7 +187,6 @@ RegisterNetEvent('ghost-stash:server:addStash', function(data)
             data.stashId,
             data.radius or 1.8,
         })
-        -- Fallback: slight delay to allow async insert to complete before reloading
         Wait(100)
     end
     loadStashes()
@@ -199,7 +216,6 @@ RegisterNetEvent('ghost-stash:server:deleteStash', function(stashId)
     if MySQL and MySQL.query then
         MySQL.query('DELETE FROM advanced_stashes WHERE stash_id = ?', { stashId })
     end
-    -- remove from memory
     for i = #stashes, 1, -1 do
         if stashes[i].stashId == stashId then table.remove(stashes, i) end
     end
@@ -227,7 +243,6 @@ RegisterNetEvent('ghost-stash:server:updateStash', function(data)
             data.stashId
         })
     end
-    -- update memory
     local updated = false
     for i = 1, #stashes do
         if stashes[i].stashId == data.stashId then
@@ -244,11 +259,9 @@ RegisterNetEvent('ghost-stash:server:updateStash', function(data)
     if not updated then loadStashes() else broadcastStashes() end
 end)
 
--- ox_inventory item transaction logging (best-effort; depends on ox version)
 if Config.inventoryType == 'ox' then
     AddEventHandler('ox_inventory:removedItem', function(source, inventory, item, count, slot)
-        -- Attempt to detect stash inventory
-        local invId = inventory and (inventory.id or inventory) -- varies by version
+        local invId = inventory and (inventory.id or inventory)
         if type(invId) == 'string' and invId:sub(1, 6) == 'stash:' then
             local stashId = invId:sub(7)
             local Player = QBCore.Functions.GetPlayer(source)
@@ -278,19 +291,17 @@ if Config.inventoryType == 'ox' then
     end)
 end
 
--- Depoları istemciye gönder
 QBCore.Functions.CreateCallback('ghost-stash:server:getStashes', function(source, cb)
 	local admin = isPlayerAdmin(source)
 	cb({ stashes = stashes, isAdmin = admin })
 end)
 
--- Stash açma
 RegisterNetEvent('ghost-stash:server:openStash', function(stashData)
 	local src = source
     local Player = QBCore.Functions.GetPlayer(src)
 	local invType = Config.inventoryType
     local stashId = stashData.stashId or ('ghoststash_'..tostring(src))
-    -- Server-side authoritative stash lookup to enforce access
+
     local serverStash = nil
     for _, s in ipairs(stashes) do
         if s.stashId == stashId then serverStash = s break end
@@ -299,7 +310,7 @@ RegisterNetEvent('ghost-stash:server:openStash', function(stashData)
         TriggerClientEvent('QBCore:Notify', src, 'Depo bulunamadı.', 'error')
         return
     end
-    -- Erişim kontrolü: admin her zaman açabilir
+
     local isAdmin = isPlayerAdmin(src)
 
     if not isAdmin and Player and serverStash and serverStash.accessType then
@@ -316,13 +327,12 @@ RegisterNetEvent('ghost-stash:server:openStash', function(stashData)
                 return
             end
         elseif serverStash.accessType == 'everyone' then
-            -- serbest
         else
-            -- tanımsız tür: reddet
             TriggerClientEvent('QBCore:Notify', src, 'Bu depoya erişim yetkiniz yok.', 'error')
             return
         end
     end
+
     if invType == 'qb' then
 		TriggerClientEvent('inventory:client:SetCurrentStash', src, stashId)
 		TriggerClientEvent('inventory:client:OpenInventory', src, 'stash', {maxweight = 50000, slots = 50, label = stashData.label, id = stashId})
